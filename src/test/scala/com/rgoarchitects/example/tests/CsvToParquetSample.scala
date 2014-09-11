@@ -45,7 +45,7 @@ class CsvToParquetSample extends FunSpec{
 
     val data = sc.textFile("src/test/resources/*.csv")
 
-    val calls = data.map (Call(_))
+    val calls = data.map (Call(_)).cache()
     val hourlyPairs = calls.map(c => (c.getHourly,c))
     val weeklyPairs = calls.map(c => (c.getWeekly,c))
 
