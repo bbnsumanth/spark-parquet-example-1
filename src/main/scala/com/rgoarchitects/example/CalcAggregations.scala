@@ -42,7 +42,9 @@ object CalcAggregations   {
 
     val sample = calls.head
     //use old fashioned aggregations to minimize iterations on calls Iterable
-    //todo: all var definitions should be private with an accessor
+    // I guess the idiomatic way would have been to .cache the group and then
+    // calculate each aggregation as a separate .map (or flatmaps) but it seems
+    // to me that would be more wasteful (something to benchmark ...)
     var sumDuration = 0L
     var sumPricing = 0.0
     var minDuration = Long.MaxValue
