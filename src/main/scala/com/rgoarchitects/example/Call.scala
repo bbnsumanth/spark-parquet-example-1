@@ -53,5 +53,7 @@ case class Call(userId : Long,
                 day : Int,
                 hour : Int)  {
   def getHourly = f"$year%04d-$month%02d-$day%02d-$hour%02d-$userId%012d"
+
+  def getWeekly = f"$year%04d-$month%02d-$day%02d-$userId%012d"
 }
 

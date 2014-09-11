@@ -33,8 +33,11 @@ class CsvToParquetSample extends FunSpec{
 
 
     val tempDir = Files.createTempDir()
+    val tempDir2 = Files.createTempDir()
     val outputDir = new File(tempDir, "output").getAbsolutePath
+    val outputDir2 = new File(tempDir2, "output").getAbsolutePath
     println(outputDir)
+    println(outputDir2)
 
 
     val sc = new SparkContext(conf)
@@ -42,19 +45,22 @@ class CsvToParquetSample extends FunSpec{
 
     val data = sc.textFile("src/test/resources/*.csv")
 
+    val calls = data.map (Call(_))
+    val hourlyPairs = calls.map(c => (c.getHourly,c))
+    val weeklyPairs = calls.map(c => (c.getWeekly,c))
 
-    val callPairs = data.map(l => {val c = Call(l)
-      (c.getHourly,c)})
+    val groupedHourly = hourlyPairs.groupByKey()
+    val groupedWeekly = weeklyPairs.groupByKey()
 
-
-    val grouped = callPairs.groupByKey()
-    val aggregates =grouped.values.map(g => (null,CalcAggregations(g)))
+    val hourlyAggregates = groupedHourly.values.map(g => (null,CalcAggregations(g)))
+    val weeklyAggregates = groupedWeekly.values.map(g => (null,CalcAggregations(g)))
 
     val job = new Job()
 
     ParquetOutputFormat.setWriteSupportClass(job,classOf[ProtoWriteSupport[Aggregate]])
     ProtoParquetOutputFormat.setProtobufClass(job,classOf[Aggregate])
-    aggregates.saveAsNewAPIHadoopFile(outputDir,classOf[Void],classOf[Aggregate],classOf[ParquetOutputFormat[Aggregate]],job.getConfiguration)
+    hourlyAggregates.saveAsNewAPIHadoopFile(outputDir,classOf[Void],classOf[Aggregate],classOf[ParquetOutputFormat[Aggregate]],job.getConfiguration)
+    weeklyAggregates.saveAsNewAPIHadoopFile(outputDir2,classOf[Void],classOf[Aggregate],classOf[ParquetOutputFormat[Aggregate]],job.getConfiguration)
 
   }
 
