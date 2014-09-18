@@ -48,20 +48,20 @@ class CsvToParquetSample extends FunSpec{
     val calls = data.map (Call(_)).cache()
 
     val hourlyPairs = calls.map(c => (c.getHourly,c))
-    val weeklyPairs = calls.map(c => (c.getDaily,c))
+    val dailyPairs = calls.map(c => (c.getDaily,c))
 
     val groupedHourly = hourlyPairs.groupByKey()
-    val groupedWeekly = weeklyPairs.groupByKey()
+    val groupedDaily = dailyPairs.groupByKey()
 
     val hourlyAggregates = groupedHourly.values.map(g => (null,CalcAggregations(g)))
-    val weeklyAggregates = groupedWeekly.values.map(g => (null,CalcAggregations(g)))
+    val dailyAggregates = groupedDaily.values.map(g => (null,CalcAggregations(g)))
 
     val job = new Job()
 
     ParquetOutputFormat.setWriteSupportClass(job,classOf[ProtoWriteSupport[Aggregate]])
     ProtoParquetOutputFormat.setProtobufClass(job,classOf[Aggregate])
     hourlyAggregates.saveAsNewAPIHadoopFile(outputDir,classOf[Void],classOf[Aggregate],classOf[ParquetOutputFormat[Aggregate]],job.getConfiguration)
-    weeklyAggregates.saveAsNewAPIHadoopFile(outputDir2,classOf[Void],classOf[Aggregate],classOf[ParquetOutputFormat[Aggregate]],job.getConfiguration)
+    dailyAggregates.saveAsNewAPIHadoopFile(outputDir2,classOf[Void],classOf[Aggregate],classOf[ParquetOutputFormat[Aggregate]],job.getConfiguration)
 
   }
 
