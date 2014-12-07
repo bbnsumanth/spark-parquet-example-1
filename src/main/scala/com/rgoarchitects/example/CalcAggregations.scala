@@ -14,7 +14,8 @@ import scala.collection.mutable.ListBuffer
 
 object CalcAggregations   {
 
-  def apply(calls:Iterable[Call]) : Aggregate= {
+  def apply( calls : Iterable[(String,String,Call)]) = {
+
     val entryBuilder=PhoneEntry.newBuilder()
     val aggregateBuilder = Aggregate.newBuilder()
     val phoneBook = new mutable.HashMap[Long,PhoneEntry]()
@@ -40,7 +41,8 @@ object CalcAggregations   {
       }
     }
 
-    val sample = calls.head
+    val (_,_,sample) = calls.head
+
     //use old fashioned aggregations to minimize iterations on calls Iterable
     // I guess the idiomatic way would have been to .cache the group and then
     // calculate each aggregation as a separate .map (or flatmaps) but it seems
@@ -55,7 +57,8 @@ object CalcAggregations   {
     var minBalance = Double.MaxValue
     var maxBalance = Double.MinValue
 
-    for (call<-calls) {
+    for (callRecord<-calls) {
+      val (_,_,call) = callRecord
       sumDuration += call.duration
       minDuration = if (call.duration<minDuration) call.duration else minDuration
       maxDuration = if (call.duration>maxDuration) call.duration else maxDuration

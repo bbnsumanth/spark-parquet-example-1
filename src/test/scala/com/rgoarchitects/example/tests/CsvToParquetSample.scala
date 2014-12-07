@@ -17,7 +17,7 @@ import parquet.proto.{ProtoParquetOutputFormat, ProtoWriteSupport}
 
 import org.scalatest.FunSpec
 
-import scala.util.{Success, Try}
+import scala.util.Try
 
 
 /**
@@ -32,7 +32,7 @@ class CsvToParquetSample extends FunSpec{
 
     val conf = new SparkConf(false).
       setMaster("local[1]").
-      set("spark.executor.memory", "1m").
+      set("spark.executor.memory", "100k").
       setAppName(" Spark processing")
 
 
@@ -47,20 +47,17 @@ class CsvToParquetSample extends FunSpec{
     val sc = new SparkContext(conf)
     val data = sc.textFile("src/test/resources/*.csv")
 
-
     val calls = data.map(c=>Try(Call(c))).
       filter(_.isSuccess).
-      sortBy(_.get.getHourly).
+      map(c => (c.get.getHourly,c.get.getDaily,c.get)).
       persist(StorageLevel.MEMORY_AND_DISK)
 
-    val hourlyPairs = calls.map(c => (c.get.getHourly,c.get))
-    val dailyPairs = calls.map(c => (c.get.getDaily,c.get))
 
-    val groupedHourly = hourlyPairs.groupByKey()
-    val groupedDaily = dailyPairs.groupByKey()
+    val groupedHourly = calls.groupBy(x=>x._1)
+    val groupedDaily = calls.groupBy(x=>x._2)
 
-    val hourlyAggregates = groupedHourly.values.map(g => (null,CalcAggregations(g)))
-    val dailyAggregates = groupedDaily.values.map(g => (null,CalcAggregations(g)))
+    val hourlyAggregates= groupedHourly.map(x=>(null,CalcAggregations(x._2)))
+    val dailyAggregates = groupedDaily.map(x =>(null,CalcAggregations(x._2)))
 
     val job = new Job()
 
@@ -68,7 +65,6 @@ class CsvToParquetSample extends FunSpec{
     ProtoParquetOutputFormat.setProtobufClass(job,classOf[Aggregate])
     hourlyAggregates.saveAsNewAPIHadoopFile(outputDir,classOf[Void],classOf[Aggregate],classOf[ParquetOutputFormat[Aggregate]],job.getConfiguration)
     dailyAggregates.saveAsNewAPIHadoopFile(outputDir2,classOf[Void],classOf[Aggregate],classOf[ParquetOutputFormat[Aggregate]],job.getConfiguration)
-
   }
 
 
