@@ -4,10 +4,11 @@ import java.io.File
 
 
 import com.rgoarchitects.example.Aggregates.Aggregate
-import com.rgoarchitects.example.{Call, CalcAggregations}
+import com.rgoarchitects.example.{ Call, CalcAggregations}
 
 import com.google.common.io.Files
 import org.apache.hadoop.mapreduce.Job
+import org.apache.spark.storage.StorageLevel
 
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.SparkContext._
@@ -15,6 +16,8 @@ import parquet.hadoop.ParquetOutputFormat
 import parquet.proto.{ProtoParquetOutputFormat, ProtoWriteSupport}
 
 import org.scalatest.FunSpec
+
+import scala.util.{Success, Try}
 
 
 /**
@@ -27,9 +30,10 @@ class CsvToParquetSample extends FunSpec{
   it("should aggregate into a parquet file") {
 
 
-    val conf = new SparkConf(false)
-      .setMaster("local[1]")
-      .setAppName(" Spark processing")
+    val conf = new SparkConf(false).
+      setMaster("local[1]").
+      set("spark.executor.memory", "1m").
+      setAppName(" Spark processing")
 
 
     val tempDir = Files.createTempDir()
@@ -41,14 +45,16 @@ class CsvToParquetSample extends FunSpec{
 
 
     val sc = new SparkContext(conf)
-
-
     val data = sc.textFile("src/test/resources/*.csv")
 
-    val calls = data.map (Call(_)).cache()
 
-    val hourlyPairs = calls.map(c => (c.getHourly,c))
-    val dailyPairs = calls.map(c => (c.getDaily,c))
+    val calls = data.map(c=>Try(Call(c))).
+      filter(_.isSuccess).
+      sortBy(_.get.getHourly).
+      persist(StorageLevel.MEMORY_AND_DISK)
+
+    val hourlyPairs = calls.map(c => (c.get.getHourly,c.get))
+    val dailyPairs = calls.map(c => (c.get.getDaily,c.get))
 
     val groupedHourly = hourlyPairs.groupByKey()
     val groupedDaily = dailyPairs.groupByKey()
